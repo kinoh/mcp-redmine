@@ -248,12 +248,12 @@ Returns:
     mcp.tool()(redmine_download)
 
 def build_mcp(host: str | None, port: int | None) -> FastMCP:
-    # Set settings before instantiating FastMCP so transport security uses these values.
+    init_kwargs = {}
     if host is not None:
-        os.environ["FASTMCP_HOST"] = host
+        init_kwargs["host"] = host
     if port is not None:
-        os.environ["FASTMCP_PORT"] = str(port)
-    mcp = FastMCP("Redmine MCP server")
+        init_kwargs["port"] = port
+    mcp = FastMCP("Redmine MCP server", **init_kwargs)
     register_tools(mcp)
     get_logger(__name__).info(f"Starting MCP Redmine version {VERSION}")
     return mcp
