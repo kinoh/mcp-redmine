@@ -241,8 +241,7 @@ Args:
 Returns:
     str: YAML string containing response status code, body and error message
 
-{}""".format(REDMINE_REQUEST_INSTRUCTIONS).strip())
-    )(redmine_request)
+{}""".format(REDMINE_REQUEST_INSTRUCTIONS).strip())(redmine_request)
     mcp.tool()(redmine_paths_list)
     mcp.tool()(redmine_paths_info)
     mcp.tool()(redmine_upload)
