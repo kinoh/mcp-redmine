@@ -125,27 +125,9 @@ def validate_path(file_path: str, must_exist: bool = True) -> tuple[str | None, 
 
 
 # Tools
-mcp = FastMCP("Redmine MCP server")
-get_logger(__name__).info(f"Starting MCP Redmine version {VERSION}")
-
-@mcp.tool(description="""
-Make a request to the Redmine API
-
-Args:
-    path: API endpoint path (e.g. '/issues.json')
-    method: HTTP method to use (default: 'get')
-    data: Dictionary for request body (for POST/PUT)
-    params: Dictionary for query parameters
-
-Returns:
-    str: YAML string containing response status code, body and error message
-
-{}""".format(REDMINE_REQUEST_INSTRUCTIONS).strip())
-    
 def redmine_request(path: str, method: str = 'get', data: dict = None, params: dict = None) -> str:
     return wrap_insecure_content(format_response(request(path, method=method, data=data, params=params)))
 
-@mcp.tool()
 def redmine_paths_list() -> str:
     """Return a list of available API paths from OpenAPI spec
     
@@ -157,7 +139,6 @@ def redmine_paths_list() -> str:
     """
     return format_response(list(SPEC['paths'].keys()))
 
-@mcp.tool()
 def redmine_paths_info(path_templates: list) -> str:
     """Get full path information for given path templates
     
@@ -174,7 +155,6 @@ def redmine_paths_info(path_templates: list) -> str:
 
     return format_response(info)
 
-@mcp.tool()
 def redmine_upload(file_path: str, description: str = None) -> str:
     """
     Upload a file to Redmine and get a token for attachment
@@ -205,7 +185,6 @@ def redmine_upload(file_path: str, description: str = None) -> str:
     except Exception as e:
         return format_response({"status_code": 0, "body": None, "error": f"{e.__class__.__name__}: {e}"})
 
-@mcp.tool()
 def redmine_download(attachment_id: int, save_path: str, filename: str = None) -> str:
     """
     Download an attachment from Redmine and save it to a local file
@@ -249,6 +228,37 @@ def redmine_download(attachment_id: int, save_path: str, filename: str = None) -
     except Exception as e:
         return format_response({"status_code": 0, "body": None, "error": f"{e.__class__.__name__}: {e}"})
 
+def register_tools(mcp: FastMCP) -> None:
+    mcp.tool(description="""
+Make a request to the Redmine API
+
+Args:
+    path: API endpoint path (e.g. '/issues.json')
+    method: HTTP method to use (default: 'get')
+    data: Dictionary for request body (for POST/PUT)
+    params: Dictionary for query parameters
+
+Returns:
+    str: YAML string containing response status code, body and error message
+
+{}""".format(REDMINE_REQUEST_INSTRUCTIONS).strip())
+    )(redmine_request)
+    mcp.tool()(redmine_paths_list)
+    mcp.tool()(redmine_paths_info)
+    mcp.tool()(redmine_upload)
+    mcp.tool()(redmine_download)
+
+def build_mcp(host: str | None, port: int | None) -> FastMCP:
+    # Set settings before instantiating FastMCP so transport security uses these values.
+    if host is not None:
+        os.environ["FASTMCP_HOST"] = host
+    if port is not None:
+        os.environ["FASTMCP_PORT"] = str(port)
+    mcp = FastMCP("Redmine MCP server")
+    register_tools(mcp)
+    get_logger(__name__).info(f"Starting MCP Redmine version {VERSION}")
+    return mcp
+
 def main():
     """Main entry point for the mcp-redmine package."""
     import argparse
@@ -260,8 +270,9 @@ def main():
     args = parser.parse_args()
 
     if args.transport == "sse":
-        mcp.settings.host = args.host
-        mcp.settings.port = args.port
+        mcp = build_mcp(args.host, args.port)
+    else:
+        mcp = build_mcp(None, None)
     mcp.run(transport=args.transport)
 
 if __name__ == "__main__":
